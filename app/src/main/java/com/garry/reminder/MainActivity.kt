@@ -59,13 +59,13 @@ fun App(onDone: () -> Unit) {
 
     val mOn = tick >= 0 && prefs.getLong("mEnd", -1) >= today
     val tOn = tick >= 0 && prefs.getLong("tEnd", -1) >= today
-    val items = if (auto) autoItems(Calendar.getInstance(), service, israel, mOn, tOn)
+    val due = if (auto) autoItems(Calendar.getInstance(), service, israel, mOn, tOn)
                 else Item.values().filter { it in manual }
 
     val perm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     LaunchedEffect(Unit) { perm.launch(Manifest.permission.POST_NOTIFICATIONS) }
-    LaunchedEffect(items, service) {
-        Ongoing.start(ctx, service.label + ": " + items.joinToString(", ") { it.en.substringBefore(" /") }.take(60))
+    LaunchedEffect(due, service) {
+        Ongoing.start(ctx, service.label + ": " + due.joinToString(", ") { it.en.substringBefore(" /") }.take(60))
     }
 
     MaterialTheme {
@@ -80,23 +80,20 @@ fun App(onDone: () -> Unit) {
                     item { Chip(label = { Text("No reminder") }, onClick = { answer(p, 0) }, colors = ChipDefaults.secondaryChipColors()) }
                 } else {
                     item { Chip(label = { Text(service.label) }, onClick = { service = Service.values()[(service.ordinal + 1) % 3] }) }
-                    item { ToggleChip(checked = auto, onCheckedChange = { auto = it }, label = { Text("Auto (calendar)") },
-                        toggleControl = { Switch(checked = auto, onCheckedChange = null) }) }
-                    item { ToggleChip(checked = israel, onCheckedChange = { israel = it }, label = { Text("Israel") },
-                        toggleControl = { Switch(checked = israel, onCheckedChange = null) }) }
+                    item { Chip(label = { Text(if (auto) "Auto: ON" else "Auto: OFF") }, onClick = { auto = !auto }) }
+                    item { Chip(label = { Text(if (israel) "Israel" else "Diaspora") }, onClick = { israel = !israel }) }
                     if (auto) {
-                        items(items.size) { i ->
+                        items(due.size) { i ->
                             Card(onClick = {}) {
-                                Text(items[i].heb, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                                Text(items[i].en, style = MaterialTheme.typography.caption2)
+                                Text(due[i].heb, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                                Text(due[i].en, style = MaterialTheme.typography.caption2)
                             }
                         }
                     } else {
                         items(Item.values().size) { i ->
-                            val it = Item.values()[i]
-                            ToggleChip(checked = it in manual, onCheckedChange = { on -> if (on) manual.add(it) else manual.remove(it) },
-                                label = { Text(it.heb) }, secondaryLabel = { Text(it.en) },
-                                toggleControl = { Checkbox(checked = it in manual, onCheckedChange = null) })
+                            val x = Item.values()[i]
+                            Chip(label = { Text((if (x in manual) "✓ " else "") + x.heb) }, secondaryLabel = { Text(x.en) },
+                                onClick = { if (x in manual) manual.remove(x) else manual.add(x) })
                         }
                     }
                     item { Chip(label = { Text("Done") }, onClick = onDone, colors = ChipDefaults.secondaryChipColors()) }
