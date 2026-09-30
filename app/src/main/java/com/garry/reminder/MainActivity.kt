@@ -76,7 +76,10 @@ fun App(onDone: () -> Unit) {
                     val (m, t) = longTermState(Calendar.getInstance(), israel)
                     val msg = if (p == "m") (if (m == 1) "Mashiv HaRuach" else "Morid HaTal") else (if (t == 1) "V'ten Tal U'matar" else "V'ten Bracha")
                     item { Text("$msg starts today.\nRemind me for how long?", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
-                    items(listOf(5, 10, 30)) { d -> Chip(label = { Text("$d days") }, onClick = { answer(p, d) }) }
+                    items(3) { i ->
+                        val d = listOf(5, 10, 30)[i]
+                        Chip(label = { Text("$d days") }, onClick = { answer(p, d) })
+                    }
                     item { Chip(label = { Text("No reminder") }, onClick = { answer(p, 0) }, colors = ChipDefaults.secondaryChipColors()) }
                 } else {
                     item { Chip(label = { Text(service.label) }, onClick = { service = Service.values()[(service.ordinal + 1) % 3] }) }
