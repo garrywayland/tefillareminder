@@ -1,6 +1,7 @@
 package com.garry.reminder.phone
 
 import android.content.Context
+import android.content.Intent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,7 +32,7 @@ class DavenWidget : GlanceAppWidget() {
         provideContent {
             Column(
                 modifier = GlanceModifier.fillMaxSize().background(ColorProvider(Color(0xFF14161A))).padding(12.dp)
-                    .clickable(actionStartActivity<ReminderActivity>()),
+                    .clickable(actionStartActivity(Intent(context, ReminderActivity::class.java))),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
