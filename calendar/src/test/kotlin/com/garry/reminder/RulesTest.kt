@@ -12,7 +12,7 @@ class RulesTest {
 
     @BeforeTest fun setTz() { TimeZone.setDefault(tz) }
 
-    private fun ms(y: Int, m: Int, d: Int, h: Int, mi: Int) =
+    private fun ms(y: Int, m: Int, d: Int, h: Int, mi: Int = 0) =
         Calendar.getInstance(tz).apply { clear(); set(y, m - 1, d, h, mi) }.timeInMillis
 
     private fun at(y: Int, m: Int, d: Int, h: Int, mi: Int = 0, il: Boolean = false, win: Boolean = true): Pair<Service, List<Item>> {
