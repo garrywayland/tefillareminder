@@ -56,6 +56,21 @@ class RulesTest {
         expect("June 05:00", at(2027, 6, 21, 5), S)
         if (complicationItem(ms(2027, 3, 23, 9), false, true, true) != Item.HANISSIM) fails += "Complication on Purim should be Al HaNissim"
         if (complicationItem(ms(2026, 12, 4, 10), false, true, true) != Item.GESHEM) fails += "Complication 4 Dec morning should be Morid HaGeshem"
+        // Season change must show at the first Maariv (evening of 4 Dec), not the next morning
+        if (longTermState(Calendar.getInstance().apply { timeInMillis = ms(2026, 12, 4, 19, 30) }, false) != Pair(1, 1)) fails += "4 Dec Maariv: long-term state should already be V'ten Tal U'matar"
+        if (longTermState(Calendar.getInstance().apply { timeInMillis = ms(2026, 12, 4, 14) }, false) != Pair(1, 0)) fails += "4 Dec Mincha: long-term state should still be V'ten Bracha"
+        if (longTermState(Calendar.getInstance().apply { timeInMillis = ms(2026, 10, 17, 19, 30) }, true) != Pair(1, 1)) fails += "Israel eve of 7 Cheshvan: should be V'ten Tal U'matar"
+        // Watch: an unanswered change counts as on; an answered, expired window does not
+        if (watchWindows(Calendar.getInstance().apply { timeInMillis = ms(2026, 12, 4, 19, 30) }, false, 1, 0, 0, 0, 20000) != Pair(false, true)) fails += "Watch windows 4 Dec Maariv: V'ten Tal should be on before answering"
+        if (watchWindows(Calendar.getInstance().apply { timeInMillis = ms(2026, 12, 4, 14) }, false, 1, 0, 0, 0, 20000) != Pair(false, false)) fails += "Watch windows 4 Dec Mincha: nothing should be on"
+        // Tile NEXT: Mincha at 11:55 on 4 Dec (after winter chatzot, before 12:00) -> tonight's Maariv is 25 Kislev, first V'ten Tal U'matar
+        val tile = tileLines(ms(2026, 12, 4, 11, 55), false, false, false)
+        if (!tile[0].first.contains("Mincha")) fails += "Tile 4 Dec 11:55: NOW should be Mincha (got ${tile[0].first})"
+        listOf(Item.HANISSIM, Item.TAL_UMATAR).filter { it.heb !in tile[1].second }.forEach { fails += "Tile 4 Dec 11:55: NEXT Maariv missing $it (got ${tile[1].second})" }
+        if (Item.BRACHA.heb in tile[1].second) fails += "Tile 4 Dec 11:55: NEXT Maariv should not show V'ten Bracha"
+        val tile2 = tileLines(ms(2026, 12, 4, 19, 30), false, false, true)
+        if (Item.TAL_UMATAR.heb !in tile2[0].second || Item.HANISSIM.heb !in tile2[0].second) fails += "Tile 4 Dec 19:30: NOW Maariv should have Tal U'matar and Al HaNissim (got ${tile2[0].second})"
+        if (Item.HANISSIM.heb !in tile2[1].second) fails += "Tile 4 Dec 19:30: NEXT Shacharit should have Al HaNissim (got ${tile2[1].second})"
         assertTrue(fails.isEmpty(), "\n" + fails.joinToString("\n"))
     }
 }

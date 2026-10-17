@@ -14,10 +14,9 @@ class DavenTileService : TileService() {
     override fun onTileRequest(requestParams: RequestBuilders.TileRequest): ListenableFuture<TileBuilders.Tile> {
         val prefs = getSharedPreferences("p", 0)
         val today = LocalDate.now().toEpochDay()
-        val lines = tileLines(
-            System.currentTimeMillis(), prefs.getBoolean("il", false),
-            prefs.getLong("mEnd", -1) >= today, prefs.getLong("tEnd", -1) >= today
-        )
+        val il = prefs.getBoolean("il", false)
+        val (mOn, tOn) = watchWindows(java.util.Calendar.getInstance(), il, prefs.getInt("m", -1), prefs.getInt("t", -1), prefs.getLong("mEnd", -1), prefs.getLong("tEnd", -1), today)
+        val lines = tileLines(System.currentTimeMillis(), il, mOn, tOn)
         val grey = 0xFFA9A9B3.toInt()
         val col = LayoutElementBuilders.Column.Builder().setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
         fun section(label: String, items: List<String>, max: Int, sp: Float, color: Int) {
