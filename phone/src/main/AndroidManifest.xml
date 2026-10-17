@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <application android:label="Daven Reminder" android:icon="@drawable/ic_siddur_color" android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
