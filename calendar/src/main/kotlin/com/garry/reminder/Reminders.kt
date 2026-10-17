@@ -40,8 +40,9 @@ private fun itemsOn(date: Calendar, s: Service, inIsrael: Boolean, showMashiv: B
     if (showMashiv && j.isMashivHaruachRecited) out += Item.GESHEM
     if (showTal) out += if (j.isVeseinTalUmatarRecited) Item.TAL_UMATAR else Item.BRACHA
     if (j.isChanukah || j.isPurim) out += Item.HANISSIM
-    if (s != Service.MAARIV && j.isTaanis && j.yomTovIndex != JewishCalendar.TISHA_BEAV) out += Item.ANENU
-    if (s == Service.MINCHA && j.yomTovIndex == JewishCalendar.TISHA_BEAV) out += Item.NACHEM
+    val tishaBav = j.yomTovIndex == JewishCalendar.TISHA_BEAV
+    if (j.isTaanis && (s == Service.MINCHA || (s == Service.SHACHARIT && !tishaBav))) out += Item.ANENU // Tisha B'Av: Mincha only, with Nachem
+    if (s == Service.MINCHA && tishaBav) out += Item.NACHEM
     return out
 }
 

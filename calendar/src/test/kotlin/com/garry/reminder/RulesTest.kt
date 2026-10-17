@@ -43,7 +43,7 @@ class RulesTest {
         expect("Purim", at(2027, 3, 23, 9), S, listOf(Item.HANISSIM))
         expect("Erev Pesach Mincha", at(2027, 4, 21, 15), M, listOf(Item.TAL_UMATAR), listOf(Item.BRACHA))
         expect("Chol Hamoed Pesach", at(2027, 4, 26, 9), S, listOf(Item.YAALEH, Item.BRACHA), listOf(Item.GESHEM, Item.TAL_UMATAR))
-        expect("Tisha B'Av Mincha", at(2027, 8, 12, 14), M, listOf(Item.NACHEM), listOf(Item.ANENU))
+        expect("Tisha B'Av Mincha", at(2027, 8, 12, 14), M, listOf(Item.NACHEM, Item.ANENU))
         expect("Tisha B'Av Shacharit", at(2027, 8, 12, 9), S, not = listOf(Item.NACHEM, Item.ANENU))
         expect("Israel 6 Cheshvan", at(2026, 10, 17, 9, il = true), S, listOf(Item.BRACHA), listOf(Item.TAL_UMATAR))
         expect("Israel 7 Cheshvan", at(2026, 10, 18, 9, il = true), S, listOf(Item.TAL_UMATAR))
