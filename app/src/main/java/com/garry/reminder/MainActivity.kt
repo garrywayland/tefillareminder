@@ -47,6 +47,8 @@ fun App(onDone: () -> Unit) {
     var pending by remember { mutableStateOf<String?>(null) }
     val manual = remember { mutableStateListOf<Item>() }
     var locTick by remember { mutableIntStateOf(0) }
+    var shema by remember { mutableIntStateOf(prefs.getInt("shema", 0)) }
+    var shemaShown by remember { mutableStateOf(false) } // opening the app acknowledges the current Shema window
     remember { Loc.apply(ctx) }
 
     LaunchedEffect(Unit) { while (true) { delay(60_000); nowMs = System.currentTimeMillis() } }
@@ -81,7 +83,15 @@ fun App(onDone: () -> Unit) {
     val service = svcMode ?: autoService(nowMs)
     val mOn = tick >= 0 && prefs.getLong("mEnd", -1) >= todayEpoch()
     val tOn = tick >= 0 && prefs.getLong("tEnd", -1) >= todayEpoch()
-    val due = if (auto) autoItems(now, service, israel, mOn, tOn) else Item.values().filter { it in manual }
+    val shemaId = if (shema > 0) shemaWindow(nowMs) else null
+    LaunchedEffect(shemaId, shema) {
+        if (shemaId != null && prefs.getString("shemaAck", "") != shemaId) {
+            shemaShown = true
+            prefs.edit().putString("shemaAck", shemaId).apply()
+            Shema.refreshSurfaces(ctx)
+        }
+    }
+    val due = if (auto) (if (shemaShown && shema > 0) listOf(Item.SHEMA) else emptyList()) + autoItems(now, service, israel, mOn, tOn) else Item.values().filter { it in manual }
 
     val purim = isPurim(now, service, israel)
 
@@ -139,6 +149,13 @@ fun App(onDone: () -> Unit) {
                         )
                     }
                     item { Chip(label = { Text("Reminders") }, secondaryLabel = { Text(if (auto) "Automatic (calendar)" else "Manual") }, onClick = { auto = !auto }) }
+                    item {
+                        Chip(
+                            label = { Text("Shema") },
+                            secondaryLabel = { Text(if (shema > 0) "Show on tile/complication" else "Off") },
+                            onClick = { shema = if (shema > 0) 0 else 1; prefs.edit().putInt("shema", shema).apply(); Shema.refreshSurfaces(ctx) }
+                        )
+                    }
                     item { Chip(label = { Text("Region") }, secondaryLabel = { Text(if (israel) "Israel" else "Diaspora") }, onClick = { israel = !israel; prefs.edit().putBoolean("il", israel).apply(); check() }) }
                     if (!auto) {
                         items(Item.values().size) { i ->

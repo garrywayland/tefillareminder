@@ -17,6 +17,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.garry.reminder.Item
 
 /** Full-screen reminder: stays on, shows over the lock screen, silences notifications until Done. */
 class ReminderActivity : ComponentActivity() {
@@ -26,6 +27,10 @@ class ReminderActivity : ComponentActivity() {
         setTurnScreenOn(true)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val st = computeDue(this, record = true)
+        if (Item.SHEMA in st.items) { // opening the reminder acknowledges Shema: clear its notification and let the widget revert to the Kotel
+            getSystemService(android.app.NotificationManager::class.java).cancel(ShemaAlarms.NOTIFICATION_ID)
+            ShemaAlarms.refreshWidget(this)
+        }
         val wantsDnd = getSharedPreferences("p", 0).getBoolean("dnd", true)
         val silenced = wantsDnd && DndGuard.enable(this)
         setContent { ReminderScreen(st, silenced, wantsDnd && !silenced) { DndGuard.restore(this); finishAndRemoveTask() } }

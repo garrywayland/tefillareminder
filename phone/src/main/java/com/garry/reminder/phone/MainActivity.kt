@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
     private var ilNow by mutableStateOf(false)
 
     private fun refreshLocation() = Loc.refresh(this) { ilNow = getSharedPreferences("p", 0).getBoolean("il", false); locTick++ }
+    private val notifPerm = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
     private val locPerm = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok -> if (ok) refreshLocation() }
 
     override fun onResume() {
@@ -39,6 +40,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val prefs = getSharedPreferences("p", 0)
         Loc.apply(this)
+        ShemaAlarms.schedule(this)
         ilNow = prefs.getBoolean("il", false)
         if (Loc.hasPermission(this)) refreshLocation()
         else if (!prefs.getBoolean("locAsked", false)) { prefs.edit().putBoolean("locAsked", true).apply(); locPerm.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION) }
@@ -46,6 +48,7 @@ class MainActivity : ComponentActivity() {
             var dnd by remember { mutableStateOf(prefs.getBoolean("dnd", true)) }
             var level by remember { mutableIntStateOf(prefs.getInt("dndLevel", 0)) }
             var minutes by remember { mutableIntStateOf(prefs.getInt("dndMinutes", 45)) }
+            var shema by remember { mutableIntStateOf(prefs.getInt("shema", 0)) }
             var season by remember { mutableIntStateOf(prefs.getInt("seasonDays", 10)) }
             Column(Modifier.fillMaxSize().systemBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Daven Reminder", fontSize = 24.sp)
@@ -66,6 +69,14 @@ class MainActivity : ComponentActivity() {
                 }
                 Button(onClick = { season = when (season) { 5 -> 10; 10 -> 30; 30 -> 0; else -> 5 }; prefs.edit().putInt("seasonDays", season).apply() }, Modifier.fillMaxWidth()) {
                     Text("Season reminders (Morid HaGeshem, V'ten Tal/Bracha): " + if (season == 0) "off" else "$season days")
+                }
+                Button(onClick = {
+                    shema = (shema + 1) % 3
+                    prefs.edit().putInt("shema", shema).apply()
+                    if (shema == 2 && android.os.Build.VERSION.SDK_INT >= 33) notifPerm.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    ShemaAlarms.schedule(this@MainActivity); ShemaAlarms.refreshWidget(this@MainActivity)
+                }, Modifier.fillMaxWidth()) {
+                    Text("Shema: " + listOf("off", "show on widget", "widget + notification")[shema])
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Israel", Modifier.weight(1f))

@@ -17,7 +17,8 @@ enum class Item(val heb: String, val en: String, val small: String) {
     BRACHA("ותן ברכה", "Barech Aleinu", "ברכה"),
     HANISSIM("על הנסים", "Chanukah / Purim", "הנסים"),
     ANENU("עננו", "Fast day", "עננו"),
-    NACHEM("נחם", "Tisha B'Av", "נחם")
+    NACHEM("נחם", "Tisha B'Av", "נחם"),
+    SHEMA("שמע", "Krias Shema", "שמע")
 }
 
 /** The civil date whose Hebrew date applies to this service: evening Maariv (afternoon clock time) uses tomorrow's; after midnight uses today's. */
@@ -96,10 +97,45 @@ fun isPurim(now: Calendar, s: Service, inIsrael: Boolean): Boolean {
     return JewishCalendar(prayerDate(now, s)).apply { setInIsrael(inIsrael) }.isPurim
 }
 
-val ITEM_ORDER = listOf(Item.HANISSIM, Item.YAALEH, Item.HAKADOSH, Item.HAMISHPAT, Item.NACHEM, Item.ANENU, Item.GESHEM, Item.TAL_UMATAR, Item.BRACHA)
+val ITEM_ORDER = listOf(Item.SHEMA, Item.HANISSIM, Item.YAALEH, Item.HAKADOSH, Item.HAMISHPAT, Item.NACHEM, Item.ANENU, Item.GESHEM, Item.TAL_UMATAR, Item.BRACHA)
 
-/** The one insertion the complication should show right now (null = show the Kotel). */
-fun complicationItem(nowMs: Long, israel: Boolean, mOn: Boolean, tOn: Boolean): Item? {
+/** Krias Shema windows (optional feature). Morning: sunrise until the latest Shema (Gra). Evening: nightfall (8.5 degrees) until chatzot halayla. */
+class ShemaEvent(val at: Long, val id: String, val evening: Boolean, val endsAt: Long)
+
+private class ShemaDay(val dateId: String, val sunrise: Long?, val latest: Long?, val night: Long?, val midnight: Long?)
+
+private fun shemaDay(nowMs: Long, offset: Int): ShemaDay {
+    val loc = location()
+    val day = Calendar.getInstance(loc.timeZone).apply { timeInMillis = nowMs; add(Calendar.DAY_OF_MONTH, offset) }
+    val zc = ZmanimCalendar(loc)
+    zc.calendar = day
+    val id = "%04d-%02d-%02d".format(day.get(Calendar.YEAR), day.get(Calendar.MONTH) + 1, day.get(Calendar.DAY_OF_MONTH))
+    return ShemaDay(id, zc.sunrise?.time, zc.sofZmanShmaGRA?.time, (zc.tzais ?: zc.tzais72)?.time, zc.chatzos?.time?.plus(12 * 3600_000L))
+}
+
+/** Id of the Shema window open now ("<date>M" morning, "<date>E" evening), or null. Evening windows run past midnight until chatzot halayla. */
+fun shemaWindow(nowMs: Long): String? {
+    for (off in -1..0) {
+        val d = shemaDay(nowMs, off)
+        if (off == 0 && d.sunrise != null && d.latest != null && nowMs >= d.sunrise && nowMs < d.latest) return d.dateId + "M"
+        if (d.night != null && d.midnight != null && nowMs >= d.night && nowMs < d.midnight) return d.dateId + "E"
+    }
+    return null
+}
+
+/** The next time to nudge about Shema after [nowMs]: nightfall (evening), or 30 minutes before the latest Shema (morning). */
+fun nextShemaReminder(nowMs: Long): ShemaEvent? =
+    (-1..1).flatMap { off ->
+        val d = shemaDay(nowMs, off)
+        listOfNotNull(
+            if (d.latest != null) ShemaEvent(d.latest - 30 * 60_000L, d.dateId + "M", false, d.latest) else null,
+            if (d.night != null && d.midnight != null) ShemaEvent(d.night, d.dateId + "E", true, d.midnight) else null
+        )
+    }.filter { it.at > nowMs }.minByOrNull { it.at }
+
+/** The one insertion the complication should show right now (null = show the Kotel). A Shema window not yet acknowledged ([shemaAck]) wins. */
+fun complicationItem(nowMs: Long, israel: Boolean, mOn: Boolean, tOn: Boolean, shemaOn: Boolean = false, shemaAck: String = ""): Item? {
+    if (shemaOn) shemaWindow(nowMs)?.let { if (it != shemaAck) return Item.SHEMA }
     val cal = Calendar.getInstance().apply { timeInMillis = nowMs }
     val due = autoItems(cal, autoService(nowMs), israel, mOn, tOn)
     return ITEM_ORDER.firstOrNull { it in due }
@@ -107,7 +143,7 @@ fun complicationItem(nowMs: Long, israel: Boolean, mOn: Boolean, tOn: Boolean): 
 
 /** Tile data: for now and for the next service, a label plus one Hebrew phrase per insertion (most important first).
  *  A season change between now and the next service (e.g. Mincha on 4 Dec -> Maariv) always shows at the next service. */
-fun tileLines(nowMs: Long, israel: Boolean, mOn: Boolean, tOn: Boolean): List<Pair<String, List<String>>> {
+fun tileLines(nowMs: Long, israel: Boolean, mOn: Boolean, tOn: Boolean, shemaOn: Boolean = false, shemaAck: String = ""): List<Pair<String, List<String>>> {
     val cal = Calendar.getInstance().apply { timeInMillis = nowMs }
     val s = autoService(nowMs)
     val n = Service.values()[(s.ordinal + 1) % 3]
@@ -116,9 +152,10 @@ fun tileLines(nowMs: Long, israel: Boolean, mOn: Boolean, tOn: Boolean): List<Pa
     val nextDate = (cal.clone() as Calendar).apply { if (n == Service.MAARIV) add(Calendar.DAY_OF_MONTH, 1) else timeInMillis = date.timeInMillis }
     val (m, t) = stateOn(date, israel)
     val (m2, t2) = stateOn(nextDate, israel)
+    val shemaFirst = if (shemaOn && shemaWindow(nowMs).let { it != null && it != shemaAck }) listOf(Item.SHEMA.heb) else emptyList()
     fun heb(l: List<Item>) = l.sortedBy { ITEM_ORDER.indexOf(it) }.map { it.heb }
     return listOf(
-        "NOW \u00b7 ${s.label}" to heb(itemsOn(date, s, israel, mOn, tOn)),
+        "NOW \u00b7 ${s.label}" to (shemaFirst + heb(itemsOn(date, s, israel, mOn, tOn))),
         "NEXT \u00b7 ${n.label}" to heb(itemsOn(nextDate, n, israel, mOn || m2 != m, tOn || t2 != t))
     )
 }

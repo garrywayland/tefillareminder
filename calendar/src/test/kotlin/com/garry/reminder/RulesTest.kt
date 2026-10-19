@@ -80,6 +80,28 @@ class RulesTest {
             if (!isIsraelHere()) fails += "Asia/Jerusalem time zone should count as Israel"
         } finally { TimeZone.setDefault(tz); setLocation(51.6137, -0.2751) }
         if (isIsraelHere()) fails += "Europe/London must not count as Israel"
+        // Shema windows (Edgware): 4 Dec sunrise 07:49, latest Shema (Gra) 09:50, nightfall (8.5 deg) 16:51, chatzot 11:51 so chatzot halayla 23:51
+        fun win(h: Int, mi: Int, d: Int = 4) = shemaWindow(ms(2026, 12, d, h, mi))
+        if (win(6, 0) != null) fails += "Shema 4 Dec 06:00 should be outside any window (got ${win(6, 0)})"
+        if (win(8, 30) != "2026-12-04M") fails += "Shema 4 Dec 08:30 should be morning (got ${win(8, 30)})"
+        if (win(10, 0) != null) fails += "Shema 4 Dec 10:00 is after the latest morning Shema (got ${win(10, 0)})"
+        if (win(15, 0) != null) fails += "Shema 4 Dec 15:00 should be outside any window (got ${win(15, 0)})"
+        if (win(20, 0) != "2026-12-04E") fails += "Shema 4 Dec 20:00 should be evening (got ${win(20, 0)})"
+        if (win(23, 0) != "2026-12-04E") fails += "Shema 4 Dec 23:00 should still be evening"
+        if (win(0, 30, 5) != null) fails += "Shema 5 Dec 00:30 is after chatzot halayla (23:51) (got ${win(0, 30, 5)})"
+        // Summer (BST): chatzot 13:02 so chatzot halayla is 01:02 the next morning
+        val sj = shemaWindow(ms(2027, 6, 22, 0, 30))
+        if (sj != "2027-06-21E") fails += "Shema 22 Jun 00:30 BST should still be the 21 Jun evening window (got $sj)"
+        if (shemaWindow(ms(2027, 6, 22, 2, 0)) != null) fails += "Shema 22 Jun 02:00 BST is after chatzot halayla"
+        val nx = nextShemaReminder(ms(2026, 12, 4, 6, 0))
+        if (nx == null || nx.evening || nx.id != "2026-12-04M" || nx.at < ms(2026, 12, 4, 9, 10) || nx.at > ms(2026, 12, 4, 9, 30)) fails += "Next Shema reminder from 06:00 should be 30 min before the latest morning Shema (got ${nx?.id} at ${nx?.at})"
+        val nx2 = nextShemaReminder(ms(2026, 12, 4, 12, 0))
+        if (nx2 == null || !nx2.evening || nx2.id != "2026-12-04E") fails += "Next Shema reminder from noon should be tonight's nightfall (got ${nx2?.id})"
+        if (complicationItem(ms(2026, 12, 4, 8, 30), false, false, false, shemaOn = true) != Item.SHEMA) fails += "Complication should show Shema in the morning window"
+        if (complicationItem(ms(2026, 12, 4, 8, 30), false, false, false, shemaOn = true, shemaAck = "2026-12-04M") == Item.SHEMA) fails += "Complication should revert once Shema is acknowledged"
+        if (complicationItem(ms(2026, 12, 4, 8, 30), false, false, false) == Item.SHEMA) fails += "Shema must stay off when the option is off"
+        if (Item.SHEMA.heb !in tileLines(ms(2026, 12, 4, 20, 0), false, false, false, shemaOn = true)[0].second) fails += "Tile should list Shema in the evening window"
+        if (Item.SHEMA.heb in tileLines(ms(2026, 12, 4, 20, 0), false, false, false)[0].second) fails += "Tile must not list Shema when the option is off"
         assertTrue(fails.isEmpty(), "\n" + fails.joinToString("\n"))
     }
 }

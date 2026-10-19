@@ -19,7 +19,7 @@ class SiddurComplicationService : SuspendingComplicationDataSourceService() {
         val today = LocalDate.now().toEpochDay()
         val il = prefs.getBoolean("il", false)
         val (mOn, tOn) = watchWindows(java.util.Calendar.getInstance(), il, prefs.getInt("m", -1), prefs.getInt("t", -1), prefs.getLong("mEnd", -1), prefs.getLong("tEnd", -1), today)
-        val item = complicationItem(System.currentTimeMillis(), il, mOn, tOn)
+        val item = complicationItem(System.currentTimeMillis(), il, mOn, tOn, Shema.on(this), Shema.ack(this))
         return build(request.complicationType, item)
     }
 

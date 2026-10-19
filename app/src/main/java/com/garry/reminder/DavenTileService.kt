@@ -17,7 +17,7 @@ class DavenTileService : TileService() {
         val today = LocalDate.now().toEpochDay()
         val il = prefs.getBoolean("il", false)
         val (mOn, tOn) = watchWindows(java.util.Calendar.getInstance(), il, prefs.getInt("m", -1), prefs.getInt("t", -1), prefs.getLong("mEnd", -1), prefs.getLong("tEnd", -1), today)
-        val lines = tileLines(System.currentTimeMillis(), il, mOn, tOn)
+        val lines = tileLines(System.currentTimeMillis(), il, mOn, tOn, Shema.on(this), Shema.ack(this))
         val grey = 0xFFA9A9B3.toInt()
         val col = LayoutElementBuilders.Column.Builder().setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
         fun section(label: String, items: List<String>, max: Int, sp: Float, color: Int) {

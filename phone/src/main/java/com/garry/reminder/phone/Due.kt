@@ -34,6 +34,9 @@ fun computeDue(ctx: Context, record: Boolean = false): DueState {
     val (m, t) = longTermState(cal, il)
     val mOn = windowOn(prefs, "m", m, today, days, record)
     val tOn = windowOn(prefs, "t", t, today, days, record)
-    val items = autoItems(cal, svc, il, mOn, tOn).sortedBy { ITEM_ORDER.indexOf(it) }
+    val shemaWin = if (prefs.getInt("shema", 0) > 0) shemaWindow(nowMs) else null // 0 off, 1 widget, 2 widget + notification
+    val showShema = shemaWin != null && prefs.getString("shemaAck", "") != shemaWin
+    if (record && showShema) prefs.edit().putString("shemaAck", shemaWin).apply() // opening the reminder acknowledges it; the widget then reverts
+    val items = (if (showShema) listOf(Item.SHEMA) else emptyList()) + autoItems(cal, svc, il, mOn, tOn).sortedBy { ITEM_ORDER.indexOf(it) }
     return DueState(svc, items, isPurim(cal, svc, il))
 }
