@@ -23,6 +23,7 @@ private fun windowOn(prefs: SharedPreferences, key: String, state: Int, today: L
 }
 
 fun computeDue(ctx: Context, record: Boolean = false): DueState {
+    Loc.apply(ctx)
     val prefs = ctx.getSharedPreferences("p", 0)
     val il = prefs.getBoolean("il", false)
     val days = prefs.getInt("seasonDays", 10) // 0 = never show season items

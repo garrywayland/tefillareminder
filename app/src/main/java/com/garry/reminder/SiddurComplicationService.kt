@@ -15,6 +15,7 @@ class SiddurComplicationService : SuspendingComplicationDataSourceService() {
 
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
         val prefs = getSharedPreferences("p", 0)
+        Loc.apply(this)
         val today = LocalDate.now().toEpochDay()
         val il = prefs.getBoolean("il", false)
         val (mOn, tOn) = watchWindows(java.util.Calendar.getInstance(), il, prefs.getInt("m", -1), prefs.getInt("t", -1), prefs.getLong("mEnd", -1), prefs.getLong("tEnd", -1), today)

@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -23,6 +24,11 @@ import androidx.compose.ui.unit.sp
 /** Settings screen (launcher). The reminder itself lives in ReminderActivity / the widget. */
 class MainActivity : ComponentActivity() {
     private var granted by mutableStateOf(false)
+    private var locTick by mutableIntStateOf(0)
+    private var ilNow by mutableStateOf(false)
+
+    private fun refreshLocation() = Loc.refresh(this) { ilNow = getSharedPreferences("p", 0).getBoolean("il", false); locTick++ }
+    private val locPerm = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok -> if (ok) refreshLocation() }
 
     override fun onResume() {
         super.onResume()
@@ -32,12 +38,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val prefs = getSharedPreferences("p", 0)
+        Loc.apply(this)
+        ilNow = prefs.getBoolean("il", false)
+        if (Loc.hasPermission(this)) refreshLocation()
+        else if (!prefs.getBoolean("locAsked", false)) { prefs.edit().putBoolean("locAsked", true).apply(); locPerm.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION) }
         setContent {
             var dnd by remember { mutableStateOf(prefs.getBoolean("dnd", true)) }
             var level by remember { mutableIntStateOf(prefs.getInt("dndLevel", 0)) }
             var minutes by remember { mutableIntStateOf(prefs.getInt("dndMinutes", 45)) }
             var season by remember { mutableIntStateOf(prefs.getInt("seasonDays", 10)) }
-            var il by remember { mutableStateOf(prefs.getBoolean("il", false)) }
             Column(Modifier.fillMaxSize().systemBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Daven Reminder", fontSize = 24.sp)
                 Text("Add the widget from your home screen's widget list. Tap it to open the full-screen reminder.", fontSize = 14.sp)
@@ -60,9 +69,13 @@ class MainActivity : ComponentActivity() {
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Israel", Modifier.weight(1f))
-                    Switch(checked = il, onCheckedChange = { il = it; prefs.edit().putBoolean("il", it).remove("m").remove("t").remove("mStart").remove("tStart").apply() })
+                    Switch(checked = ilNow, onCheckedChange = { ilNow = it; prefs.edit().putBoolean("il", it).apply() })
                 }
-                Text("Why Do Not Disturb access? Android only lets an app change silencing if you allow it here once. The app switches it on when the reminder opens and always puts your previous setting back when you tap Done (or after the time above). Nothing is sent anywhere. Prayer times are worked out on the phone for Edgware, London.", fontSize = 12.sp)
+                val ll = if (locTick >= 0) Loc.saved(this@MainActivity) else null
+                Button(onClick = { if (Loc.hasPermission(this@MainActivity)) refreshLocation() else locPerm.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION) }, Modifier.fillMaxWidth()) {
+                    Text("Update location: " + if (ll == null) "Edgware (default)" else "%.2f, %.2f".format(ll.first, ll.second))
+                }
+                Text("Why Do Not Disturb access? Android only lets an app change silencing if you allow it here once. The app switches it on when the reminder opens and always puts your previous setting back when you tap Done (or after the time above). Nothing is sent anywhere. Your rough location is used only on this phone to work out prayer times and is never sent anywhere. Until a location is found it uses Edgware, London.", fontSize = 12.sp)
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                     Image(painterResource(R.drawable.ic_panda), null, Modifier.size(40.dp))
                     Text("Great Panda Workflows", fontSize = 12.sp)

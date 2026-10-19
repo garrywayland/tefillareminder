@@ -61,13 +61,25 @@ private fun stateOn(date: Calendar, israel: Boolean): Pair<Int, Int> {
     return Pair(if (j.isMashivHaruachRecited) 1 else 0, if (j.isVeseinTalUmatarRecited) 1 else 0)
 }
 
-/** Location used for prayer times (Edgware, London). Change these to move the watch elsewhere. */
-val LOCATION = GeoLocation("Edgware", 51.6137, -0.2751, 0.0, TimeZone.getTimeZone("Europe/London"))
+/** Where prayer times are worked out: Edgware until an app supplies the device location with [setLocation]. The time zone is always the device's. */
+@Volatile private var latLon = Pair(51.6137, -0.2751)
+
+fun setLocation(lat: Double, lon: Double) {
+    if (lat in -90.0..90.0 && lon in -180.0..180.0) latLon = Pair(lat, lon)
+}
+
+fun currentLatLon(): Pair<Double, Double> = latLon
+
+fun location() = GeoLocation("here", latLon.first, latLon.second, 0.0, TimeZone.getDefault())
+
+/** True when the device time zone is Israel's (used to pick Israel vs diaspora calendar automatically). */
+fun isIsraelHere() = TimeZone.getDefault().id in setOf("Asia/Jerusalem", "Asia/Tel_Aviv", "Israel")
 
 /** Shacharit until chatzot, Mincha until shkia, Maariv until alos hashachar. */
 fun autoService(nowMs: Long): Service {
-    val zc = ZmanimCalendar(LOCATION)
-    zc.calendar = Calendar.getInstance(LOCATION.timeZone).apply { timeInMillis = nowMs }
+    val loc = location()
+    val zc = ZmanimCalendar(loc)
+    zc.calendar = Calendar.getInstance(loc.timeZone).apply { timeInMillis = nowMs }
     val alos = zc.alosHashachar?.time ?: zc.alos72?.time // summer: no 16.1° dawn, fall back to sunrise minus 72 min
     val chatzos = zc.chatzos?.time
     val shkia = zc.sunset?.time

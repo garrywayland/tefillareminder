@@ -46,6 +46,8 @@ fun App(onDone: () -> Unit) {
     var tick by remember { mutableIntStateOf(0) }
     var pending by remember { mutableStateOf<String?>(null) }
     val manual = remember { mutableStateListOf<Item>() }
+    var locTick by remember { mutableIntStateOf(0) }
+    remember { Loc.apply(ctx) }
 
     LaunchedEffect(Unit) { while (true) { delay(60_000); nowMs = System.currentTimeMillis() } }
 
@@ -68,6 +70,12 @@ fun App(onDone: () -> Unit) {
         tick++; check()
     }
     LaunchedEffect(Unit) { check() }
+    fun refreshLocation() = Loc.refresh(ctx) { israel = prefs.getBoolean("il", false); nowMs = System.currentTimeMillis(); locTick++; tick++; check() }
+    val locPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok -> if (ok) refreshLocation() }
+    LaunchedEffect(Unit) {
+        if (Loc.hasPermission(ctx)) refreshLocation()
+        else if (!prefs.getBoolean("locAsked", false)) { prefs.edit().putBoolean("locAsked", true).apply(); locPerm.launch(Manifest.permission.ACCESS_COARSE_LOCATION) }
+    }
 
     val now = Calendar.getInstance().apply { timeInMillis = nowMs }
     val service = svcMode ?: autoService(nowMs)
@@ -131,7 +139,7 @@ fun App(onDone: () -> Unit) {
                         )
                     }
                     item { Chip(label = { Text("Reminders") }, secondaryLabel = { Text(if (auto) "Automatic (calendar)" else "Manual") }, onClick = { auto = !auto }) }
-                    item { Chip(label = { Text("Location") }, secondaryLabel = { Text(if (israel) "Israel" else "Diaspora") }, onClick = { israel = !israel; prefs.edit().putBoolean("il", israel).apply(); check() }) }
+                    item { Chip(label = { Text("Region") }, secondaryLabel = { Text(if (israel) "Israel" else "Diaspora") }, onClick = { israel = !israel; prefs.edit().putBoolean("il", israel).apply(); check() }) }
                     if (!auto) {
                         items(Item.values().size) { i ->
                             val x = Item.values()[i]
@@ -139,10 +147,18 @@ fun App(onDone: () -> Unit) {
                                 onClick = { if (x in manual) manual.remove(x) else manual.add(x) })
                         }
                     }
+                    item {
+                        val ll = if (locTick >= 0) Loc.saved(ctx) else null
+                        Chip(
+                            label = { Text("Update location") },
+                            secondaryLabel = { Text(if (ll == null) "Edgware (default)" else "%.2f, %.2f".format(ll.first, ll.second)) },
+                            onClick = { if (Loc.hasPermission(ctx)) refreshLocation() else locPerm.launch(Manifest.permission.ACCESS_COARSE_LOCATION) }
+                        )
+                    }
                     item { Chip(label = { Text("Allow notifications") }, onClick = { perm.launch(Manifest.permission.POST_NOTIFICATIONS) }, colors = ChipDefaults.secondaryChipColors()) }
                     item {
                         Text(
-                            "Why notifications? They let this app keep a small siddur chip on your watch face while you daven, so the reminder stays visible until you tap Done. No location or personal data is used or sent anywhere. Prayer times (alos, chatzot, shkia) are worked out on the watch for Edgware, London.",
+                            "Why notifications? They let this app keep a small siddur chip on your watch face while you daven, so the reminder stays visible until you tap Done. Your rough location is used only on the watch to work out prayer times (alos, chatzot, shkia) and is never sent anywhere. Until a location is found it uses Edgware, London.",
                             style = MaterialTheme.typography.caption2, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
                         )
                     }

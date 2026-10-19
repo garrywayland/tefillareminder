@@ -71,6 +71,15 @@ class RulesTest {
         val tile2 = tileLines(ms(2026, 12, 4, 19, 30), false, false, true)
         if (Item.TAL_UMATAR.heb !in tile2[0].second || Item.HANISSIM.heb !in tile2[0].second) fails += "Tile 4 Dec 19:30: NOW Maariv should have Tal U'matar and Al HaNissim (got ${tile2[0].second})"
         if (Item.HANISSIM.heb !in tile2[1].second) fails += "Tile 4 Dec 19:30: NEXT Shacharit should have Al HaNissim (got ${tile2[1].second})"
+        // Location: Jerusalem on 4 Dec, 16:20 local is before shkia (~16:36) -> Mincha; Edgware would already be Maariv
+        val jer = TimeZone.getTimeZone("Asia/Jerusalem")
+        try {
+            TimeZone.setDefault(jer); setLocation(31.7683, 35.2137)
+            val tj = Calendar.getInstance(jer).apply { clear(); set(2026, 11, 4, 16, 20) }.timeInMillis
+            if (autoService(tj) != Service.MINCHA) fails += "Jerusalem 4 Dec 16:20 should be Mincha (got ${autoService(tj)})"
+            if (!isIsraelHere()) fails += "Asia/Jerusalem time zone should count as Israel"
+        } finally { TimeZone.setDefault(tz); setLocation(51.6137, -0.2751) }
+        if (isIsraelHere()) fails += "Europe/London must not count as Israel"
         assertTrue(fails.isEmpty(), "\n" + fails.joinToString("\n"))
     }
 }
