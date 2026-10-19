@@ -131,7 +131,7 @@ fun App(onDone: () -> Unit) {
                         )
                     }
                     item { Chip(label = { Text("Reminders") }, secondaryLabel = { Text(if (auto) "Automatic (calendar)" else "Manual") }, onClick = { auto = !auto }) }
-                    item { Chip(label = { Text("Location") }, secondaryLabel = { Text(if (israel) "Israel" else "Diaspora") }, onClick = { israel = !israel; prefs.edit().putBoolean("il", israel).remove("m").remove("t").remove("mEnd").remove("tEnd").apply(); check() }) }
+                    item { Chip(label = { Text("Location") }, secondaryLabel = { Text(if (israel) "Israel" else "Diaspora") }, onClick = { israel = !israel; prefs.edit().putBoolean("il", israel).apply(); check() }) }
                     if (!auto) {
                         items(Item.values().size) { i ->
                             val x = Item.values()[i]
